@@ -1,29 +1,54 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from core_rag import rag_pipeline
 import uuid
+from pc_rag_ingestion import sync_data
+from pc_rag_retrieval import get_agent
+from langchain_groq import ChatGroq
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow all (for now)
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"],  # This allows OPTIONS, POST, GET, etc.
     allow_headers=["*"],
 )
 
+agent = None
+
 class Query(BaseModel):
-    question: str | None = None
-    session_id: str | None = None
+    question: str
+    session_id: str = None
+
+
+@app.on_event("startup")
+def load_rag():
+    global agent
+    print("🚀 Loading RAG system...")
+
+    page_index = sync_data(reset=False)
+    agent = get_agent(
+        llm=ChatGroq(model="llama-3.1-8b-instant"),
+        page_index=page_index,
+        domain="@alliedbenefit.com",
+        key="allied"
+    )
+    print("✅ RAG Loaded")
+
 
 @app.post("/ask")
 def ask(query: Query):
-    if not query.question:
-        return {"error": "Question is required"}
+    global agent
     session_id = query.session_id or str(uuid.uuid4())
-    answer = rag_pipeline(query.question, session_id)
+    config = {"configurable": {"thread_id": session_id}}
+    result = agent.graph.invoke(
+        {"input": query.question},
+        config=config
+    )
     return {
-        "answer": answer,
+        "answer": result["answer"],
         "session_id": session_id
     }
