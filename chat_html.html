@@ -1,220 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+
 <div id="chat-trigger" onclick="toggleChat()">
-  <span>Ask Me</span>
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+    <span>Ask Me</span>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+        <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+    </svg>
 </div>
 
 <div id="chat-box" class="hidden">
-  <div class="chat-header">
-    <div class="header-info">
-      <strong>AI Assistant</strong>
-      <span class="status">Online</span>
-    </div>
-    <div class="header-controls">
-      <!-- <button onclick="minimizeChat()" title="Minimize">_</button> -->
-      <button onclick="toggleChat()" title="Close">×</button>
-    </div>
-  </div>
-
-  <div id="chat-content" class="chat-content">
-    <div class="msg bot">Hello! How can I help you today?</div>
+    <div class="chat-header">
+        <div class="header-info">
+            <strong>AI Assistant</strong>
+            <span class="status">Online</span>
+        </div>
+        <div class="header-controls">
+            <button onclick="toggleChat()" title="Close">&times;</button>
+        </div>
     </div>
 
-  <div class="chat-input-area">
-    <input type="text" id="user-input" placeholder="Type your question...">
-    <button id="send-btn">Send</button>
-  </div>
+    <div id="chat-content" class="chat-content">
+        <div class="msg bot">Hello! How can I help you today?</div>
+    </div>
+
+    <div class="chat-input-area">
+        <input type="text" id="user-input" placeholder="Type your question...">
+        <button id="send-btn">Send</button>
+    </div>
 </div>
 
 <style>
-  :root {
-    --primary-color: #2563eb;
-    --bg-light: #f3f4f6;
-    --text-dark: #1f2937;
-  }
+    :root {
+        --primary-color: #2563eb;
+        --bg-light: #f3f4f6;
+        --text-dark: #1f2937;
+    }
 
-  #chat-trigger {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--primary-color);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 50px;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-family: sans-serif;
-  }
+    #chat-trigger {
+        position: fixed !important;
+        bottom: 20px;
+        right: 20px;
+        background: var(--primary-color);
+        color: white;
+        padding: 12px 20px;
+        border-radius: 50px;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: flex !important; /* Forces flex alignment */
+        align-items: center;
+        gap: 10px;
+        font-family: sans-serif;
+        z-index: 999999 !important; /* Stays on top */
+    }
 
-  #chat-box {
-    position: fixed;
-    bottom: 85px;
-    right: 20px;
-    width: 350px;
-    height: 500px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    font-family: sans-serif;
-    transition: transform 0.3s ease;
-  }
+    #chat-box {
+        position: fixed !important;
+        bottom: 85px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: sans-serif;
+        transition: transform 0.3s ease;
+        z-index: 999999 !important; /* Stays on top */
+    }
 
-  .hidden { display: none !important; }
-  .minimized { height: 50px !important; overflow: hidden; }
+    .hidden { display: none !important; }
 
-  .chat-header {
-    background: var(--primary-color);
-    color: white;
-    padding: 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
+    .chat-header {
+        background: var(--primary-color);
+        color: white;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
-  .status { font-size: 0.7rem; display: block; opacity: 0.8; }
+    .status { font-size: 0.7rem; display: block; opacity: 0.8; }
 
-  .header-controls button {
-    background: transparent;
-    border: none;
-    color: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-    margin-left: 8px;
-  }
+    .header-controls button {
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+    }
 
-  .chat-content {
-    flex: 1;
-    padding: 15px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
+    .chat-content {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        background-color: #ffffff;
+    }
 
-  .msg {
-    max-width: 80%;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-  }
+    .msg {
+        max-width: 80%;
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        word-wrap: break-word;
+    }
 
-  .bot { background: var(--bg-light); align-self: flex-start; color: var(--text-dark); }
-  .user { background: var(--primary-color); color: white; align-self: flex-end; }
+    .bot { background: var(--bg-light); align-self: flex-start; color: var(--text-dark); }
+    .user { background: var(--primary-color); color: white; align-self: flex-end; }
 
-  .chat-input-area {
-    padding: 15px;
-    border-top: 1px solid #eee;
-    display: flex;
-    gap: 10px;
-  }
+    .chat-input-area {
+        padding: 15px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        background: white;
+    }
 
-  #user-input {
-    flex: 1;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 8px;
-  }
+    #user-input {
+        flex: 1;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px;
+        outline: none;
+    }
 
-  #send-btn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-  }
+    #send-btn {
+        background: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    #send-btn:disabled {
+        background: #ccc;
+    }
 </style>
 
 <script>
-  function toggleChat() {
-    const chat = document.getElementById('chat-box');
-    chat.classList.toggle('hidden');
-  }
+    // Visibility Toggles
+    function toggleChat() {
+        const chat = document.getElementById('chat-box');
+        chat.classList.toggle('hidden');
+    }
 
-  function minimizeChat() {
-    const chat = document.getElementById('chat-box');
-    chat.classList.toggle('minimized');
-  }
+    document.addEventListener("DOMContentLoaded", function () {
+        let session_id = null;
+        const chatContent = document.getElementById("chat-content");
+        const userInput = document.getElementById("user-input");
+        const sendBtn = document.getElementById("send-btn");
+
+        function addMessage(text, type) {
+            const msg = document.createElement("div");
+            msg.classList.add("msg", type);
+            msg.innerText = text;
+            chatContent.appendChild(msg);
+            chatContent.scrollTop = chatContent.scrollHeight;
+            return msg;
+        }
+
+        async function ask() {
+            const question = userInput.value.trim();
+            if (!question) return;
+
+            addMessage(question, "user");
+            userInput.value = "";
+
+            sendBtn.disabled = true;
+            userInput.disabled = true;
+
+            const typingMsg = addMessage("Thinking...", "bot");
+
+            try {
+                const payload = { question };
+                if (session_id) payload.session_id = session_id;
+
+                // IMPORTANT: Replace 'your-app-name.onrender.com' with your real Render URL
+                const response = await fetch("http://127.0.0.1:8000/ask", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error("Server error");
+
+                const data = await response.json();
+                if (data.session_id) session_id = data.session_id;
+
+                typingMsg.innerText = data.answer;
+
+            } catch (err) {
+                typingMsg.innerText = "Error: Unable to connect to the assistant.";
+                console.error("Connection Error:", err);
+            } finally {
+                sendBtn.disabled = false;
+                userInput.disabled = false;
+                userInput.focus();
+            }
+        }
+
+        sendBtn.onclick = ask;
+        userInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") ask();
+        });
+    });
 </script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  let session_id = null;
-  const chatContent = document.getElementById("chat-content");
-  const userInput = document.getElementById("user-input");
-  const sendBtn = document.getElementById("send-btn");
-
-  // Helper to create message bubbles
-  function addMessage(text, type) {
-    const msg = document.createElement("div");
-    // This matches your CSS classes: .msg .bot or .msg .user
-    msg.classList.add("msg", type);
-    msg.innerText = text;
-    chatContent.appendChild(msg);
-
-    // Auto-scroll to bottom
-    chatContent.scrollTop = chatContent.scrollHeight;
-    return msg;
-  }
-
-  async function ask() {
-    const question = userInput.value.trim();
-    if (!question) return;
-
-    // 1. Add User Message
-    addMessage(question, "user");
-    userInput.value = "";
-
-    // Disable UI during fetch
-    sendBtn.disabled = true;
-    userInput.disabled = true;
-
-    // 2. Add Loading State
-    const typingMsg = addMessage("Thinking...", "bot");
-
-    try {
-      const payload = { question };
-      if (session_id) payload.session_id = session_id;
-
-      const res = await fetch("http://127.0.0.1:8000/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!res.ok) throw new Error("Server reached but returned an error");
-
-      const data = await res.json();
-
-      // Update session ID for RAG context
-      if (data.session_id) session_id = data.session_id;
-
-      // 3. Replace loading text with actual answer
-      typingMsg.innerText = data.answer;
-
-    } catch (err) {
-      typingMsg.innerText = "Error: Unable to connect to server.";
-      console.error("Connection Error:", err);
-    } finally {
-      // Re-enable UI
-      sendBtn.disabled = false;
-      userInput.disabled = false;
-      userInput.focus();
-    }
-  }
-
-  // Event Listeners
-  sendBtn.onclick = ask;
-
-  userInput.addEventListener("keypress", function (e) {
-    if (e.key === "Enter") {
-      ask();
-    }
-  });
-});
-</script>
+</body>
+</html>

@@ -20,6 +20,7 @@ from unstructured.partition.auto import partition
 import requests
 from unstructured.partition.html import partition_html
 from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
+import time
 
 GREEN = "\033[92m"
 BLUE = "\033[94m"
@@ -168,6 +169,7 @@ def get_jina_content(url: str) -> str:
 
         # We use a standard timeout to prevent the script from hanging
         response = requests.get(jina_url, timeout=20)
+        time.sleep(2)
 
         if response.status_code == 200:
             content = response.text
@@ -486,6 +488,7 @@ def sync_data(reset=False) -> PageIndex:
         if is_url:
             # --- URL OPTIMIZED PATH ---
             current_html = get_jina_content(full_path)
+            time.sleep(2)
             if not current_html or len(current_html.strip()) < 500:
                 print(f"⚠️ Skipping {display_name}: Content too short or timeout.")
                 continue
