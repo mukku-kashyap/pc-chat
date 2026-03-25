@@ -1,7 +1,6 @@
 import uuid
 import os
 import builtins
-import win32com.client
 from datetime import datetime, timedelta
 from typing import TypedDict, List, Annotated, Sequence, Optional
 from dotenv import load_dotenv
@@ -99,6 +98,7 @@ class RAGAgent:
         self.system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
 
         if ENABLE_EMAIL:
+            import win32com.client
             self.outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
 
         self.reranker = CohereRerank(
