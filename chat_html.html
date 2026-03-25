@@ -1,136 +1,181 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>RAG Chatbot</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
+<div id="chat-trigger" onclick="toggleChat()">
+  <span>Ask Me</span>
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+</div>
 
-    .chat-container {
-      width: 400px;
-      height: 600px;
-      background: white;
-      border-radius: 10px;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
+<div id="chat-box" class="hidden">
+  <div class="chat-header">
+    <div class="header-info">
+      <strong>AI Assistant</strong>
+      <span class="status">Online</span>
+    </div>
+    <div class="header-controls">
+      <!-- <button onclick="minimizeChat()" title="Minimize">_</button> -->
+      <button onclick="toggleChat()" title="Close">×</button>
+    </div>
+  </div>
 
-    .chat-header {
-      padding: 15px;
-      background: #007bff;
-      color: white;
-      font-weight: bold;
-      border-radius: 10px 10px 0 0;
-    }
+  <div id="chat-content" class="chat-content">
+    <div class="msg bot">Hello! How can I help you today?</div>
+    </div>
 
-    .chat-box {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-    }
-
-    .message {
-      margin: 8px 0;
-      max-width: 75%;
-      padding: 10px;
-      border-radius: 10px;
-      line-height: 1.4;
-    }
-
-    .user {
-      background: #007bff;
-      color: white;
-      align-self: flex-end;
-      margin-left: auto;
-    }
-
-    .bot {
-      background: #eaeaea;
-      color: black;
-      align-self: flex-start;
-    }
-
-    .chat-input {
-      display: flex;
-      border-top: 1px solid #ddd;
-    }
-
-    input {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      outline: none;
-    }
-
-    button {
-      padding: 10px 15px;
-      border: none;
-      background: #007bff;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      background: #999;
-    }
-
-    .typing {
-      font-style: italic;
-      color: gray;
-    }
-  </style>
-</head>
-
-<body>
-
-<div class="chat-container">
-  <div class="chat-header">Chat Assistant</div>
-
-  <div id="chat-box" class="chat-box"></div>
-
-  <div class="chat-input">
-    <input id="q" placeholder="Type your question..." />
-    <button id="sendBtn">Send</button>
+  <div class="chat-input-area">
+    <input type="text" id="user-input" placeholder="Type your question...">
+    <button id="send-btn">Send</button>
   </div>
 </div>
 
+<style>
+  :root {
+    --primary-color: #2563eb;
+    --bg-light: #f3f4f6;
+    --text-dark: #1f2937;
+  }
+
+  #chat-trigger {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--primary-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: sans-serif;
+  }
+
+  #chat-box {
+    position: fixed;
+    bottom: 85px;
+    right: 20px;
+    width: 350px;
+    height: 500px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: sans-serif;
+    transition: transform 0.3s ease;
+  }
+
+  .hidden { display: none !important; }
+  .minimized { height: 50px !important; overflow: hidden; }
+
+  .chat-header {
+    background: var(--primary-color);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .status { font-size: 0.7rem; display: block; opacity: 0.8; }
+
+  .header-controls button {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-left: 8px;
+  }
+
+  .chat-content {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .msg {
+    max-width: 80%;
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .bot { background: var(--bg-light); align-self: flex-start; color: var(--text-dark); }
+  .user { background: var(--primary-color); color: white; align-self: flex-end; }
+
+  .chat-input-area {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    gap: 10px;
+  }
+
+  #user-input {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 8px;
+  }
+
+  #send-btn {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+</style>
+
 <script>
-document.addEventListener("DOMContentLoaded", function ()
-{
+  function toggleChat() {
+    const chat = document.getElementById('chat-box');
+    chat.classList.toggle('hidden');
+  }
 
+  function minimizeChat() {
+    const chat = document.getElementById('chat-box');
+    chat.classList.toggle('minimized');
+  }
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
   let session_id = null;
+  const chatContent = document.getElementById("chat-content");
+  const userInput = document.getElementById("user-input");
+  const sendBtn = document.getElementById("send-btn");
 
+  // Helper to create message bubbles
   function addMessage(text, type) {
-    const chatBox = document.getElementById("chat-box");
     const msg = document.createElement("div");
-    msg.classList.add("message", ...type.split(" "));
+    // This matches your CSS classes: .msg .bot or .msg .user
+    msg.classList.add("msg", type);
     msg.innerText = text;
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    chatContent.appendChild(msg);
+
+    // Auto-scroll to bottom
+    chatContent.scrollTop = chatContent.scrollHeight;
     return msg;
   }
 
   async function ask() {
-    const input = document.getElementById("q");
-    const btn = document.getElementById("sendBtn");
-
-    const question = input.value.trim();
+    const question = userInput.value.trim();
     if (!question) return;
 
+    // 1. Add User Message
     addMessage(question, "user");
-    input.value = "";
+    userInput.value = "";
 
-    btn.disabled = true;
+    // Disable UI during fetch
+    sendBtn.disabled = true;
+    userInput.disabled = true;
 
-    const typingMsg = addMessage("Typing...", "bot typing");
+    // 2. Add Loading State
+    const typingMsg = addMessage("Thinking...", "bot");
 
     try {
       const payload = { question };
@@ -138,38 +183,38 @@ document.addEventListener("DOMContentLoaded", function ()
 
       const res = await fetch("http://127.0.0.1:8000/ask", {
         method: "POST",
-        headers: {"Content-Type": "application/json"},
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
 
+      if (!res.ok) throw new Error("Server reached but returned an error");
+
       const data = await res.json();
 
-      session_id = data.session_id;
+      // Update session ID for RAG context
+      if (data.session_id) session_id = data.session_id;
 
-      typingMsg.remove();
-      addMessage(data.answer, "bot");
+      // 3. Replace loading text with actual answer
+      typingMsg.innerText = data.answer;
 
     } catch (err) {
-      typingMsg.remove();
-      addMessage("Error: Unable to connect to server", "bot");
-      console.error(err);
+      typingMsg.innerText = "Error: Unable to connect to server.";
+      console.error("Connection Error:", err);
+    } finally {
+      // Re-enable UI
+      sendBtn.disabled = false;
+      userInput.disabled = false;
+      userInput.focus();
     }
-
-    btn.disabled = false;
   }
 
-  document.getElementById("sendBtn").onclick = ask;
+  // Event Listeners
+  sendBtn.onclick = ask;
 
-  document.getElementById("q").addEventListener("keypress", function(e) {
+  userInput.addEventListener("keypress", function (e) {
     if (e.key === "Enter") {
       ask();
     }
   });
-
 });
 </script>
-
-</body>
-</html>
-
-
