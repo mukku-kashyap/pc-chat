@@ -21,7 +21,6 @@ import requests
 from unstructured.partition.html import partition_html
 from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 
-
 GREEN = "\033[92m"
 BLUE = "\033[94m"
 BOLD = "\033[1m"
@@ -52,6 +51,7 @@ llm = ChatOpenAI(
 # 🗂️ PAGE INDEX: In-memory index with disk persistence
 # -------------------------------------------------------------------
 class PageIndex:
+
     def __init__(self):
         self.documents: List[Document] = []
         # Maps token -> list of document indices
@@ -158,6 +158,7 @@ class PageIndex:
 
     def get_all_documents(self) -> List[Document]:
         return list(self.documents)
+
 
 def get_jina_content(url: str) -> str:
     """Uses Jina Reader to fetch clean, rendered content from a URL."""

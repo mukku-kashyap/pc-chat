@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List
 from urllib.parse import urlparse
 
+
 def read_urls_from_file(file_path: str) -> List[str]:
     path = Path(file_path)/ "urls.txt"
 
