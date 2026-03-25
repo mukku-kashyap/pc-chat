@@ -1,0 +1,5 @@
+DOCS_FOLDER = "PC"
+PERSIST_DIRECTORY = "pc_page_index_db"
+RESET_VECTOR_DB = False
+ENABLE_EMAIL = False
+

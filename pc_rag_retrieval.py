@@ -25,6 +25,7 @@ from pc_rag_ingestion import PageIndex
 
 from pc_rag_ingestion import sync_data
 from pathlib import Path
+from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 
 load_dotenv()
 GREEN = "\033[92m"
@@ -32,7 +33,7 @@ BLUE = "\033[94m"
 BOLD = "\033[1m"
 RESET = "\033[0m"
 
-ENABLE_EMAIL = os.getenv("ENABLE_EMAIL", "false").lower() == "true"
+#ENABLE_EMAIL = os.getenv("ENABLE_EMAIL", "false").lower() == "true"
 # --- STEP 1: STATE DEFINITION ---
 
 class AgentState(TypedDict):
@@ -385,7 +386,7 @@ def get_agent(llm, page_index: PageIndex, domain=None, key=None) -> RAGAgent:
 # --- MAIN ---
 
 if __name__ == "__main__":
-    PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "claude_page_index_db")
+    #PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "claude_page_index_db")
     llm = ChatGroq(model="llama-3.1-8b-instant")
     page_index = sync_data(reset=False)  # Just sync what's needed and move on
     my_agent = get_agent(

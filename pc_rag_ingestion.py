@@ -19,6 +19,7 @@ import math
 from unstructured.partition.auto import partition
 import requests
 from unstructured.partition.html import partition_html
+from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 
 
 GREEN = "\033[92m"
@@ -33,9 +34,9 @@ warnings.filterwarnings("ignore", message=".*max_size.*parameter is deprecated.*
 load_dotenv()
 warnings.filterwarnings("ignore")
 
-DOCS_FOLDER = os.getenv("DOCS_FOLDER")
-PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY")
-RESET_VECTOR_DB = os.getenv("RESET_VECTOR_DB", "false").lower() == "true"
+#DOCS_FOLDER = os.getenv("DOCS_FOLDER")
+#PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY")
+#RESET_VECTOR_DB = os.getenv("RESET_VECTOR_DB", "false").lower() == "true"
 
 PAGE_INDEX_PICKLE_PATH = os.path.join(PERSIST_DIRECTORY, "page_index.pkl")
 

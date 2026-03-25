@@ -2,10 +2,11 @@ import os
 import json
 import hashlib
 from urllib.parse import urlparse
+from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 
 #HASH_STORE_PATH = "file_hashes.json"
-PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "claude_page_index_db")
-HASH_STORE_PATH = os.path.join(PERSIST_DIRECTORY, "file_hashes.json")
+# PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "claude_page_index_db")
+# HASH_STORE_PATH = os.path.join(PERSIST_DIRECTORY, "file_hashes.json")
 
 def is_remote_url(path):
     """Check if the path is a URL."""
