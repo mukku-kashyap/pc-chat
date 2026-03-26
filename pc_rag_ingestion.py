@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from langchain_core.documents import Document
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
-from unstructured.chunking.title import chunk_by_title
+#from unstructured.chunking.title import chunk_by_title
 import sys
 import os
 from tqdm import tqdm
@@ -16,11 +16,18 @@ from collections import defaultdict
 import warnings
 import pickle
 import math
-from unstructured.partition.auto import partition
+#from unstructured.partition.auto import partition
 import requests
-from unstructured.partition.html import partition_html
+#from unstructured.partition.html import partition_html
 from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 import time
+
+import pandas as pd
+from docx import Document as DocxDocument
+from pypdf import PdfReader
+from bs4 import BeautifulSoup
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 GREEN = "\033[92m"
 BLUE = "\033[94m"
@@ -193,49 +200,89 @@ def get_file_hash(filepath: str) -> str:
         print(f"❌ Could not hash file {filepath}: {e}")
         return ""
 
+# def partition_document(full_path: str, html_str: str = None):
+#     elements = []  # Initialize as empty list
+#     if full_path.startswith("http"):
+#         if not html_str or len(html_str.strip()) < 500:
+#             print(f"⚠️ Skipping {full_path}: HTML content is missing or too short.")
+#             return []
+#         try:
+#             elements = partition_html(
+#                 text=html_str,
+#                 strategy="hi_res",
+#                 infer_table_structure=True,
+#                 languages=["eng"]
+#             )
+#         except Exception as e:
+#             print(f"❌ Unstructured failed to parse HTML for {full_path}: {e}")
+#             return []
+#
+#     else:
+#         try:
+#             elements = partition(
+#                 filename=full_path,
+#                 strategy="hi_res",
+#                 infer_table_structure=True,
+#                 extract_image_block_to_payload=True,
+#                 languages=["eng"],
+#             )
+#         except Exception as e:
+#             print(f"❌ Failed to partition file {full_path}: {e}")
+#             return []
+#
+#     return elements
+
 def partition_document(full_path: str, html_str: str = None):
-    elements = []  # Initialize as empty list
-    if full_path.startswith("http"):
-        if not html_str or len(html_str.strip()) < 500:
-            print(f"⚠️ Skipping {full_path}: HTML content is missing or too short.")
-            return []
-        try:
-            elements = partition_html(
-                text=html_str,
-                strategy="hi_res",
-                infer_table_structure=True,
-                languages=["eng"]
-            )
-        except Exception as e:
-            print(f"❌ Unstructured failed to parse HTML for {full_path}: {e}")
-            return []
+    """Lightweight partitioning to stay under 512MB RAM."""
+    docs = []
+    try:
+        # 1. Handle URLs (Jina Content)
+        if full_path.startswith("http"):
+            soup = BeautifulSoup(html_str, "html.parser")
+            # Remove scripts and styles
+            for script in soup(["script", "style"]):
+                script.decompose()
+            text = soup.get_text(separator="\n").strip()
+            return [Document(page_content=text, metadata={"source": full_path})]
 
-    else:
-        try:
-            elements = partition(
-                filename=full_path,
-                strategy="hi_res",
-                infer_table_structure=True,
-                extract_image_block_to_payload=True,
-                languages=["eng"],
-            )
-        except Exception as e:
-            print(f"❌ Failed to partition file {full_path}: {e}")
-            return []
+        # 2. Handle PDFs (using pypdf)
+        elif full_path.lower().endswith(".pdf"):
+            reader = PdfReader(full_path)
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "") + "\n"
+            return [Document(page_content=text.strip(), metadata={"source": full_path})]
 
-    return elements
+        # 3. Handle Word Docs (.docx)
+        elif full_path.lower().endswith(".docx"):
+            doc = DocxDocument(full_path)
+            text = "\n".join([para.text for para in doc.paragraphs])
+            return [Document(page_content=text.strip(), metadata={"source": full_path})]
+
+        # 4. Handle Excel (.xlsx)
+        elif full_path.lower().endswith(".xlsx"):
+            df_dict = pd.read_excel(full_path, sheet_name=None)
+            text = ""
+            for sheet, df in df_dict.items():
+                text += f"Sheet: {sheet}\n{df.to_csv(index=False)}\n"
+            return [Document(page_content=text.strip(), metadata={"source": full_path})]
+
+    except Exception as e:
+        print(f"❌ Partitioning failed for {full_path}: {e}")
+
+    return docs
 
 # -------------------------------------------------------------------
 # ✂️ STEP 2: TITLE-BASED CHUNKING
 # -------------------------------------------------------------------
-def chunk_elements(elements):
-    chunks = chunk_by_title(
-        elements,
-        max_characters=3000,
-        new_after_n_chars=2400,
-        combine_text_under_n_chars=500,
-    )
-    return chunks
+# def chunk_elements(elements):
+#     chunks = chunk_by_title(
+#         elements,
+#         max_characters=3000,
+#         new_after_n_chars=2400,
+#         combine_text_under_n_chars=500,
+#     )
+#     return chunks
 
 
 # -------------------------------------------------------------------
@@ -386,31 +433,60 @@ def summarise_chunks_as_documents_for_pageindex(chunks, full_path, display_name)
 # -------------------------------------------------------------------
 # 🚀 PROCESS A SINGLE SOURCE
 # -------------------------------------------------------------------
+# def process_source(full_path, display_name, html_str=None):
+#     with tqdm(total=100,
+#               file=sys.stdout,
+#               desc=f"{BLUE}{BOLD}📂 Processing {display_name}{RESET}",
+#               bar_format="{desc}: {percentage:3.0f}%|{bar}|",
+#               leave=True) as pbar:
+#
+#         raw_elements = partition_document(full_path, html_str=html_str)
+#         pbar.update(30)
+#
+#         grouped_elements = isolate_structural_groups(raw_elements)
+#         chunks = []
+#         for group in grouped_elements:
+#             grouped_chunks = chunk_elements(group)
+#             chunks.extend(grouped_chunks)
+#         pbar.update(30)
+#
+#         docs = summarise_chunks_as_documents_for_pageindex(chunks, full_path, display_name)
+#         pbar.update(40)
+#
+#     print(f"{GREEN}  ✓ Extracted {len(raw_elements)} elements{RESET}")
+#     print(f"{GREEN}  ✓ Created {len(chunks)} chunks{RESET}")
+#     print(f"{GREEN}  ✓ Final docs: {len(docs)}{RESET}")
+#
+#     return docs
+
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+
 def process_source(full_path, display_name, html_str=None):
-    with tqdm(total=100,
-              file=sys.stdout,
-              desc=f"{BLUE}{BOLD}📂 Processing {display_name}{RESET}",
-              bar_format="{desc}: {percentage:3.0f}%|{bar}|",
-              leave=True) as pbar:
+    # Get raw text as a Document
+    raw_docs = partition_document(full_path, html_str=html_str)
 
-        raw_elements = partition_document(full_path, html_str=html_str)
-        pbar.update(30)
+    # Define a clean splitter
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1500,  # Smaller chunks help with 512MB RAM limits
+        chunk_overlap=150
+    )
 
-        grouped_elements = isolate_structural_groups(raw_elements)
-        chunks = []
-        for group in grouped_elements:
-            grouped_chunks = chunk_elements(group)
-            chunks.extend(grouped_chunks)
-        pbar.update(30)
+    final_docs = []
+    for doc in raw_docs:
+        # Split the text into chunks
+        chunks = text_splitter.split_text(doc.page_content)
+        for chunk in chunks:
+            # Re-wrap each chunk into a Document with proper metadata
+            final_docs.append(Document(
+                page_content=chunk,
+                metadata={
+                    "source_file": display_name,
+                    "full_path": display_name  # Using our Universal ID logic
+                }
+            ))
 
-        docs = summarise_chunks_as_documents_for_pageindex(chunks, full_path, display_name)
-        pbar.update(40)
-
-    print(f"{GREEN}  ✓ Extracted {len(raw_elements)} elements{RESET}")
-    print(f"{GREEN}  ✓ Created {len(chunks)} chunks{RESET}")
-    print(f"{GREEN}  ✓ Final docs: {len(docs)}{RESET}")
-
-    return docs
+    return final_docs
 
 def isolate_structural_groups(elements):
     """
