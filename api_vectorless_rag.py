@@ -1,10 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import uuid
+import asyncio
 from pc_rag_ingestion import sync_data
 from pc_rag_retrieval import get_agent
 from langchain_groq import ChatGroq
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 app = FastAPI()
 origins = ["*"]
@@ -13,41 +15,84 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # This allows OPTIONS, POST, GET, etc.
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Global variables for the background state
 agent = None
+is_ready = False
+
 
 class Query(BaseModel):
     question: str
     session_id: str = None
 
 
-@app.on_event("startup")
-def load_rag():
-    global agent
-    print("🚀 Loading RAG system...")
+async def initialize_rag_system():
+    """
+    Performs the heavy lifting in the background so the
+    web server port can open immediately.
+    """
+    global agent, is_ready
+    try:
+        print("🚀 Background Task: Syncing data and loading RAG...")
+        # This is the part that takes a long time
+        page_index = sync_data(reset=False)
 
-    page_index = sync_data(reset=False)
-    agent = get_agent(
-        llm=ChatGroq(model="llama-3.1-8b-instant"),
-        page_index=page_index,
-        domain="@alliedbenefit.com",
-        key="allied"
-    )
-    print("✅ RAG Loaded")
+        agent = get_agent(
+            llm=ChatGroq(model="llama-3.1-8b-instant"),
+            page_index=page_index,
+            domain="@alliedbenefit.com",
+            key="allied"
+        )
+        is_ready = True
+        print("✅ Background Task: RAG System fully loaded and ready.")
+    except Exception as e:
+        print(f"❌ Background Task Failed: {e}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """
+    FastAPI startup hook. We trigger the background task
+    but do NOT 'await' it, allowing the port to bind immediately.
+    """
+    asyncio.create_task(initialize_rag_system())
+
+
+@app.get("/")
+async def health_check():
+    """
+    Endpoint for Render to verify the service is live.
+    """
+    return {
+        "status": "online",
+        "rag_ready": is_ready
+    }
 
 
 @app.post("/ask")
-def ask(query: Query):
-    global agent
+async def ask(query: Query):
+    global agent, is_ready
+
+    # Safety check in case a user queries before indexing finishes
+    if not is_ready or agent is None:
+        return {
+            "answer": "The AI Assistant is currently syncing documents and will be ready in a moment. Please try again shortly.",
+            "session_id": query.session_id,
+            "status": "loading"
+        }
+
     session_id = query.session_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": session_id}}
+
+    # Invoke the graph
     result = agent.graph.invoke(
         {"input": query.question},
         config=config
     )
+
     return {
         "answer": result["answer"],
         "session_id": session_id

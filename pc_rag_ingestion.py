@@ -463,7 +463,7 @@ def sync_data(reset=False) -> PageIndex:
             for file in files:
                 if file.lower() == "urls.txt": continue
                 full_path = os.path.join(root, file)
-                display_name = os.path.relpath(full_path, DOCS_FOLDER)
+                display_name = os.path.relpath(full_path, DOCS_FOLDER).replace("\\", "/")
                 all_sources.append((full_path, display_name, False))
 
     # Add URLs
@@ -477,7 +477,7 @@ def sync_data(reset=False) -> PageIndex:
     has_updates = False
 
     # Identify and remove "Ghost" files (files in index that no longer exist on disk/list)
-    current_source_names = {s[0] for s in all_sources}
+    current_source_names = {s[1] for s in all_sources}
     for indexed_name in list(page_index.file_hashes.keys()):
         if indexed_name not in current_source_names:
             print(f"🗑️ Source removed from disk, deleting from index: {indexed_name}")
@@ -496,26 +496,26 @@ def sync_data(reset=False) -> PageIndex:
             new_hash = hashlib.sha256(current_html.encode('utf-8')).hexdigest() if current_html else ""
             if page_index.file_hashes.get(full_path) != new_hash:
                 print(f"🔄 New URL Processing: {display_name}")
-                page_index.delete_by_source(full_path)
+                page_index.delete_by_source(display_name)
 
                 # Pass the HTML we ALREADY have
                 docs = process_source(full_path, display_name, html_str=current_html)
                 if docs:
                     # Update docs and store the hash we already calculated
-                    page_index.add_documents(docs, full_path, new_hash)
+                    page_index.add_documents(docs, display_name, new_hash)
                     has_updates = True
             else:
                 print(f"⏭ Skipping unchanged URL: {display_name}")
         else:
             file_hash = get_file_hash(full_path)
-            if page_index.is_changed(full_path, file_hash):
+            if page_index.is_changed(display_name, file_hash):
                 print(f"🔄 File Changed Processing: {display_name}")
-                page_index.delete_by_source(full_path)
+                page_index.delete_by_source(display_name)
                 try:
                     extracted_docs = process_source(full_path, display_name, html_str=None)
                     if extracted_docs:
                         # 3. Add to index (this handles the new hash and rebuilds inverted index)
-                        page_index.add_documents(extracted_docs, full_path, file_hash)
+                        page_index.add_documents(extracted_docs, display_name, file_hash)
                         has_updates = True
                 except Exception as e:
                     print(f"❌ Error processing {display_name}: {e}")
