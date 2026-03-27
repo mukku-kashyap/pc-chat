@@ -24,7 +24,7 @@ from models import PageIndex
 
 from pc_rag_ingestion import sync_data
 from pathlib import Path
-from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
+from settings import ENABLE_EMAIL
 
 load_dotenv()
 GREEN = "\033[92m"

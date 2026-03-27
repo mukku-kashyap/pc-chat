@@ -8,6 +8,8 @@ from langchain_groq import ChatGroq
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from models import PageIndex
+from twilio.twiml.messaging_response import MessagingResponse
+import re
 
 app = FastAPI()
 origins = ["*"]
@@ -133,3 +135,76 @@ async def reset_rag_index():
     except Exception as e:
         print(f"❌ Reset failed: {e}")
         return {"status": "error", "message": str(e)}
+
+
+def format_for_whatsapp(text: str) -> str:
+    """
+    Converts standard Markdown to WhatsApp formatting.
+    Example: **text** becomes *text*
+    """
+    # Replace double asterisks with single asterisks for bold
+    text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+    # Replace __text__ or _text_ with _text_ for italics (already standard)
+    return text
+
+
+@app.post("/whatsapp")
+async def whatsapp_reply(Body: str = Form(...), From: str = Form(...)):
+    """
+    Handles incoming WhatsApp messages from Twilio.
+    - Body: The text the user sent.
+    - From: The user's WhatsApp number (e.g., 'whatsapp:+919876543210').
+    """
+    resp = MessagingResponse()
+
+    # 1. Check if RAG is actually ready
+    if not is_ready or page_index is None:
+        resp.message("System is currently updating its knowledge. Please try again in a minute.")
+        return Response(content=str(resp), media_type="application/xml")
+
+    try:
+        user_query = Body.strip()
+
+        # 2. Search your indexed PDF/Web data
+        # We use k=5 to get a good amount of context for the AI
+        search_results = page_index.search(user_query, k=5)
+
+        # Combine the content of the search results into one string
+        context_text = "\n---\n".join([doc.page_content for doc in search_results])
+
+        # 3. Generate Answer using your LLM logic
+        # Replace 'llm_chain' with whatever your LLM variable name is
+        # If you're using direct OpenAI, call your completion function here
+        ai_response = await generate_llm_answer(user_query, context_text)
+
+        # 4. Format for WhatsApp (Markdown to Asterisks)
+        final_text = format_for_whatsapp(ai_response)
+
+        # 5. Build Twilio Response
+        resp.message(final_text)
+
+    except Exception as e:
+        print(f"❌ WhatsApp Error: {e}")
+        resp.message("I encountered a small glitch while searching. Could you try rephrasing that?")
+
+    return Response(content=str(resp), media_type="application/xml")
+
+
+async def generate_llm_answer(query, context):
+    """
+    Helper to call your LLM.
+    Using a standard prompt structure for your PC project.
+    """
+    prompt = f"""
+    You are the Princess Cottage Assistant. Use the context below to answer the question.
+    If the answer isn't in the context, say you don't know politely.
+
+    Context: {context}
+
+    Question: {query}
+    Answer:
+    """
+    # Replace this with your specific OpenAI/LLM call logic
+    # Example: response = client.chat.completions.create(...)
+    # return response.choices[0].message.content
+    pass  # You will put your specific LLM variable call here
