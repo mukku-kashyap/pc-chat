@@ -102,18 +102,34 @@ async def ask(query: Query):
 
 @app.post("/admin/reset-index")
 async def reset_rag_index():
-    PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "pc_page_index_db")
-    INDEX_PATH = os.path.join(PERSIST_DIRECTORY, "page_index.pkl")
+    # 1. Get paths from environment
+    persist_dir = os.getenv("PERSIST_DIRECTORY", "pc_page_index_db")
+    index_path = os.path.join(persist_dir, "page_index.pkl")
+
     global page_index, is_ready
     try:
-        is_ready = False  # Stop the AI from answering while we clean
-        page_index.clear(INDEX_PATH)
+        is_ready = False  # Block chat requests during rebuild
 
-        # Trigger the sync logic immediately
+        # 2. Physical Cleanup
+        if os.path.exists(index_path):
+            os.remove(index_path)
+            print(f"🗑️ Deleted old index at {index_path}")
+
+        # 3. Re-initialize the object from our new models.py
+        from models import PageIndex
+        page_index = PageIndex()
+
+        # 4. Trigger the sync logic
+        # IMPORTANT: Ensure your sync_data function in pc_rag_ingestion
+        # is designed to return the docs or update a passed index.
         from pc_rag_ingestion import sync_data
         await sync_data()
 
+        # 5. Reload the freshly saved index into the API's memory
+        page_index = PageIndex.load(index_path)
+
         is_ready = True
-        return {"status": "success", "message": "Index wiped and rebuilt from scratch."}
+        return {"status": "success", "message": "Index wiped and rebuilt successfully."}
     except Exception as e:
+        print(f"❌ Reset failed: {e}")
         return {"status": "error", "message": str(e)}
