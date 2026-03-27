@@ -19,3 +19,4 @@ beautifulsoup4==4.12.3
 langchain-cohere==0.5.0
 twilio==9.10.4
 python-multipart==0.0.22
+groq==0.37.1
