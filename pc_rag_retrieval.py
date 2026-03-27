@@ -20,7 +20,7 @@ from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph.message import add_messages
-from pc_rag_ingestion import PageIndex
+from models import PageIndex
 
 from pc_rag_ingestion import sync_data
 from pathlib import Path

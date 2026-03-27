@@ -7,6 +7,7 @@ from pc_rag_retrieval import get_agent
 from langchain_groq import ChatGroq
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from models import PageIndex
 
 app = FastAPI()
 origins = ["*"]
@@ -97,3 +98,22 @@ async def ask(query: Query):
         "answer": result["answer"],
         "session_id": session_id
     }
+
+
+@app.post("/admin/reset-index")
+async def reset_rag_index():
+    PERSIST_DIRECTORY = os.getenv("PERSIST_DIRECTORY", "pc_page_index_db")
+    INDEX_PATH = os.path.join(PERSIST_DIRECTORY, "page_index.pkl")
+    global page_index, is_ready
+    try:
+        is_ready = False  # Stop the AI from answering while we clean
+        page_index.clear(INDEX_PATH)
+
+        # Trigger the sync logic immediately
+        from pc_rag_ingestion import sync_data
+        await sync_data()
+
+        is_ready = True
+        return {"status": "success", "message": "Index wiped and rebuilt from scratch."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

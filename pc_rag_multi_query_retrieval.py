@@ -26,7 +26,8 @@ from langgraph.graph.message import add_messages
 from pathlib import Path
 
 # Assuming these are in the same directory
-from pc_rag_ingestion import PageIndex, sync_data, PAGE_INDEX_PICKLE_PATH
+from models import PageIndex
+from pc_rag_ingestion import sync_data, PAGE_INDEX_PICKLE_PATH
 from settings import ENABLE_EMAIL, PERSIST_DIRECTORY, RESET_VECTOR_DB, DOCS_FOLDER
 
 load_dotenv()
