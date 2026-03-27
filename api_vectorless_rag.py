@@ -7,10 +7,10 @@ from pc_rag_retrieval import get_agent
 from langchain_groq import ChatGroq
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from models import PageIndex
+import re
 from fastapi import Form, Response
 from twilio.twiml.messaging_response import MessagingResponse
-import re
+from openai import AsyncOpenAI
 
 app = FastAPI()
 origins = ["*"]
@@ -26,6 +26,7 @@ app.add_middleware(
 # Global variables for the background state
 agent = None
 is_ready = False
+page_index = None
 
 
 class Query(BaseModel):
@@ -137,6 +138,7 @@ async def reset_rag_index():
         print(f"❌ Reset failed: {e}")
         return {"status": "error", "message": str(e)}
 
+client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def format_for_whatsapp(text: str) -> str:
     """
@@ -145,40 +147,51 @@ def format_for_whatsapp(text: str) -> str:
     """
     # Replace double asterisks with single asterisks for bold
     text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
-    # Replace __text__ or _text_ with _text_ for italics (already standard)
+    # Replace markdown headers (###) with bold since WhatsApp doesn't support headers
+    text = re.sub(r'### (.*)', r'*\1*', text)
     return text
 
+async def generate_llm_answer(query: str, context: str):
+    """
+    Direct OpenAI call using your RAG context.
+    """
+    try:
+        response = await client.chat.completions.create(
+            model="gpt-4o", # or "gpt-3.5-turbo"
+            messages=[
+                {"role": "system", "content": "You are the Princess Cottage Assistant. Use the provided context to answer questions accurately. If the answer isn't in the context, politely say you don't have that information yet."},
+                {"role": "user", "content": f"Context: {context}\n\nQuestion: {query}"}
+            ],
+            temperature=0
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        print(f"LLM Error: {e}")
+        return "I'm sorry, I'm having trouble connecting to my brain right now."
 
 @app.post("/whatsapp")
 async def whatsapp_reply(Body: str = Form(...), From: str = Form(...)):
-    """
-    Handles incoming WhatsApp messages from Twilio.
-    - Body: The text the user sent.
-    - From: The user's WhatsApp number (e.g., 'whatsapp:+919876543210').
-    """
+    # Use global to ensure we are referencing the variables updated by the background task
+    global page_index, is_ready
+
     resp = MessagingResponse()
 
     # 1. Check if RAG is actually ready
     if not is_ready or page_index is None:
-        resp.message("System is currently updating its knowledge. Please try again in a minute.")
+        resp.message("The assistant is currently waking up. Please try again in 30 seconds.")
         return Response(content=str(resp), media_type="application/xml")
 
     try:
         user_query = Body.strip()
 
         # 2. Search your indexed PDF/Web data
-        # We use k=5 to get a good amount of context for the AI
         search_results = page_index.search(user_query, k=5)
-
-        # Combine the content of the search results into one string
         context_text = "\n---\n".join([doc.page_content for doc in search_results])
 
-        # 3. Generate Answer using your LLM logic
-        # Replace 'llm_chain' with whatever your LLM variable name is
-        # If you're using direct OpenAI, call your completion function here
+        # 3. Generate Answer
         ai_response = await generate_llm_answer(user_query, context_text)
 
-        # 4. Format for WhatsApp (Markdown to Asterisks)
+        # 4. Format for WhatsApp
         final_text = format_for_whatsapp(ai_response)
 
         # 5. Build Twilio Response
@@ -189,23 +202,3 @@ async def whatsapp_reply(Body: str = Form(...), From: str = Form(...)):
         resp.message("I encountered a small glitch while searching. Could you try rephrasing that?")
 
     return Response(content=str(resp), media_type="application/xml")
-
-
-async def generate_llm_answer(query, context):
-    """
-    Helper to call your LLM.
-    Using a standard prompt structure for your PC project.
-    """
-    prompt = f"""
-    You are the Princess Cottage Assistant. Use the context below to answer the question.
-    If the answer isn't in the context, say you don't know politely.
-
-    Context: {context}
-
-    Question: {query}
-    Answer:
-    """
-    # Replace this with your specific OpenAI/LLM call logic
-    # Example: response = client.chat.completions.create(...)
-    # return response.choices[0].message.content
-    pass  # You will put your specific LLM variable call here
