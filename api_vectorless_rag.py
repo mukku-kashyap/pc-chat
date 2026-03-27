@@ -10,7 +10,7 @@ import os
 import re
 from fastapi import Form, Response
 from twilio.twiml.messaging_response import MessagingResponse
-from openai import AsyncOpenAI
+from groq import AsyncGroq # Switched to Groq
 
 app = FastAPI()
 origins = ["*"]
@@ -138,67 +138,74 @@ async def reset_rag_index():
         print(f"❌ Reset failed: {e}")
         return {"status": "error", "message": str(e)}
 
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 def format_for_whatsapp(text: str) -> str:
     """
-    Converts standard Markdown to WhatsApp formatting.
-    Example: **text** becomes *text*
+    Cleans up Markdown for WhatsApp's simple formatting.
     """
-    # Replace double asterisks with single asterisks for bold
+    # **bold** -> *bold*
     text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
-    # Replace markdown headers (###) with bold since WhatsApp doesn't support headers
+    # ### Header -> *Header*
     text = re.sub(r'### (.*)', r'*\1*', text)
     return text
 
 async def generate_llm_answer(query: str, context: str):
     """
-    Direct OpenAI call using your RAG context.
+    Calls Groq (Llama 3 or Mixtral) for the RAG answer.
     """
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o", # or "gpt-3.5-turbo"
+        chat_completion = await client.chat.completions.create(
+            # Using Llama-3-70b for high quality, or 8b for insane speed
+            model="llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are the Princess Cottage Assistant. Use the provided context to answer questions accurately. If the answer isn't in the context, politely say you don't have that information yet."},
-                {"role": "user", "content": f"Context: {context}\n\nQuestion: {query}"}
+                {
+                    "role": "system",
+                    "content": "You are the Princess Cottage Assistant. Use the following context to answer the user's question. If the answer isn't in the context, politely say you don't have that information. Keep answers concise for WhatsApp."
+                },
+                {
+                    "role": "user",
+                    "content": f"Context: {context}\n\nQuestion: {query}"
+                }
             ],
-            temperature=0
+            temperature=0.2,
+            max_tokens=500
         )
-        return response.choices[0].message.content
+        return chat_completion.choices[0].message.content
     except Exception as e:
-        print(f"LLM Error: {e}")
-        return "I'm sorry, I'm having trouble connecting to my brain right now."
+        print(f"❌ Groq Error: {e}")
+        return "I'm sorry, I'm having trouble processing your request right now."
 
 @app.post("/whatsapp")
 async def whatsapp_reply(Body: str = Form(...), From: str = Form(...)):
-    # Use global to ensure we are referencing the variables updated by the background task
+    # Referencing the global variables updated by your background sync
     global page_index, is_ready
 
     resp = MessagingResponse()
 
-    # 1. Check if RAG is actually ready
+    # 1. State Check
     if not is_ready or page_index is None:
-        resp.message("The assistant is currently waking up. Please try again in 30 seconds.")
+        resp.message("The assistant is still loading the latest rules. Please try again in 30 seconds!")
         return Response(content=str(resp), media_type="application/xml")
 
     try:
         user_query = Body.strip()
 
-        # 2. Search your indexed PDF/Web data
+        # 2. RAG Search
         search_results = page_index.search(user_query, k=5)
         context_text = "\n---\n".join([doc.page_content for doc in search_results])
 
-        # 3. Generate Answer
+        # 3. Groq Generation
         ai_response = await generate_llm_answer(user_query, context_text)
 
-        # 4. Format for WhatsApp
+        # 4. WhatsApp Formatting
         final_text = format_for_whatsapp(ai_response)
 
-        # 5. Build Twilio Response
+        # 5. Send back to Twilio
         resp.message(final_text)
 
     except Exception as e:
-        print(f"❌ WhatsApp Error: {e}")
-        resp.message("I encountered a small glitch while searching. Could you try rephrasing that?")
+        print(f"❌ WhatsApp Bridge Error: {e}")
+        resp.message("I'm sorry, I encountered an error. Please try again.")
 
     return Response(content=str(resp), media_type="application/xml")
