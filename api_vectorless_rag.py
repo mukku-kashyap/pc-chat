@@ -148,6 +148,7 @@ def format_for_whatsapp(text: str) -> str:
 # --- UPDATED WHATSAPP LLM CALL ---
 
 async def generate_whatsapp_llm_answer(query: str, context: str):
+    """Refined Groq call to fix false 'No' responses and ensure extraction."""
     try:
         chat_completion = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -155,13 +156,13 @@ async def generate_whatsapp_llm_answer(query: str, context: str):
                 {
                     "role": "system",
                     "content": (
-                        "You are a high-precision enterprise assistant. "
-                        "STRICT RULES:\n"
-                        "1. Give the DIRECT answer immediately. No intro like 'Let's analyze'.\n"
-                        "2. Only list items that match the user's specific criteria.\n"
-                        "3. Use *bold* for room numbers and prices.\n"
-                        "4. Never explain your reasoning or search process.\n"
-                        "5. If multiple items match, use a simple bulleted list."
+                        "You are a room-availability assistant. Your task is to scan the provided context carefully.\n"
+                        "STRICT EXTRACTION RULES:\n"
+                        "1. Carefully check EVERY room entry for the requested criteria (e.g., '3 sharing' and 'AC').\n"
+                        "2. If YOU FIND A MATCH (like 602C), list it clearly with its details.\n"
+                        "3. Do NOT provide a 'No' unless you have scanned the entire context and found zero matches.\n"
+                        "4. Formatting: Use *bold* for room numbers. Use bullet points for multiple rooms.\n"
+                        "5. Output Style: Direct and professional. No intro like 'Here is the data'. Just the result."
                     )
                 },
                 {"role": "user", "content": f"Context: {context}\n\nQuestion: {query}"}
@@ -170,7 +171,7 @@ async def generate_whatsapp_llm_answer(query: str, context: str):
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        return "System error: Unable to process request."
+        return "I encountered an error retrieving room data. Please try again."
 
 
 @app.post("/whatsapp")
