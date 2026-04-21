@@ -148,7 +148,6 @@ def format_for_whatsapp(text: str) -> str:
 # --- UPDATED WHATSAPP LLM CALL ---
 
 async def generate_whatsapp_llm_answer(query: str, context: str):
-    """Direct Groq call for WhatsApp with strict 'No Reasoning' rule."""
     try:
         chat_completion = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
@@ -158,20 +157,20 @@ async def generate_whatsapp_llm_answer(query: str, context: str):
                     "content": (
                         "You are a high-precision enterprise assistant. "
                         "STRICT RULES:\n"
-                        "1. Provide ONLY the final answer. Never explain your search process.\n"
-                        "2. Never say 'I found this in the column' or 'Based on the context'.\n"
-                        "3. Use *bold* for key details (WhatsApp style).\n"
-                        "4. If info is missing, say: 'Documentation does not specify the availability for this request.'\n"
-                        "5. Do NOT mention source numbers or filenames."
+                        "1. Give the DIRECT answer immediately. No intro like 'Let's analyze'.\n"
+                        "2. Only list items that match the user's specific criteria.\n"
+                        "3. Use *bold* for room numbers and prices.\n"
+                        "4. Never explain your reasoning or search process.\n"
+                        "5. If multiple items match, use a simple bulleted list."
                     )
                 },
                 {"role": "user", "content": f"Context: {context}\n\nQuestion: {query}"}
             ],
-            temperature=0.1  # Lower temperature = less rambling
+            temperature=0.1
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        return "I'm sorry, I'm having trouble processing that right now."
+        return "System error: Unable to process request."
 
 
 @app.post("/whatsapp")
