@@ -75,12 +75,21 @@ async def startup_event():
 # --- FORMATTING HELPERS ---
 
 def format_for_whatsapp(text: str) -> str:
-    """Converts Markdown to WhatsApp-friendly syntax."""
-    # **bold** -> *bold*
+    """Converts Markdown to WhatsApp-friendly syntax and cleans up leaks."""
+    # 1. Clean up any 'leaked' citations the LLM might have hallucinated/copied
+    # Removes patterns like [Source 1], (Email 2), Source 3:, etc.
+    text = re.sub(r'\[?(Source|Email|SOURCE|EMAIL)\s*\d+\]?:?', '', text)
+
+    # 2. **bold** -> *bold*
     text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
-    # ### Header -> *Header*
+
+    # 3. ### Header -> *Header* (WhatsApp doesn't have headers, so we bold them)
     text = re.sub(r'### (.*)', r'*\1*', text)
-    return text
+
+    # 4. Bullet points: Ensure they use a standard dash or dot
+    text = text.replace("- ", "• ")
+
+    return text.strip()
 
 
 # --- ENDPOINTS ---
@@ -119,24 +128,42 @@ async def ask(query: Query):
     }
 
 
+# --- UPDATED FORMATTING HELPER ---
+
+def format_for_whatsapp(text: str) -> str:
+    """Converts Markdown to WhatsApp-friendly syntax and strips citations."""
+    # Remove common citation patterns like [Source 1], (Source 1), or Source 1:
+    text = re.sub(r'\[?Source\s*\d+\]?:?', '', text, flags=re.IGNORECASE)
+
+    # **bold** -> *bold*
+    text = re.sub(r'\*\*(.*?)\*\*', r'*\1*', text)
+    # ### Header -> *Header*
+    text = re.sub(r'### (.*)', r'*\1*', text)
+    # Convert bullet points if they aren't already supported
+    text = text.replace("- ", "• ")
+
+    return text.strip()
+
+
+# --- UPDATED WHATSAPP LLM CALL ---
+
 async def generate_whatsapp_llm_answer(query: str, context: str):
-    """Direct Groq call for WhatsApp."""
+    """Refined Groq call for cleaner WhatsApp responses."""
     try:
         chat_completion = await client.chat.completions.create(
             model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are the Princess Cottage Assistant. Use the provided context to answer. Be concise and professional for WhatsApp."
+                    "content": "You are a professional assistant. Provide a crisp, clear answer using the context. Use bullet points for lists. NEVER mention source names or numbers."
                 },
                 {"role": "user", "content": f"Context: {context}\n\nQuestion: {query}"}
             ],
-            temperature=0.2
+            temperature=0.1 # Lower temperature makes the output more focused and less likely to ramble
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        print(f"❌ Groq Error: {e}")
-        return "I'm sorry, I'm having trouble processing your request right now."
+        return "I'm sorry, I'm having trouble processing your request."
 
 
 @app.post("/whatsapp")

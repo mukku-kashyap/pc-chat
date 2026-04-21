@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -146,6 +147,18 @@
     #send-btn:disabled {
         background: #ccc;
     }
+
+    /* Ensure Markdown lists and spacing look right */
+    .bot ul, .bot ol {
+        margin-left: 20px;
+        padding-bottom: 10px;
+    }
+    .bot p {
+        margin: 0 0 10px 0;
+    }
+    .bot p:last-child {
+        margin-bottom: 0;
+    }
 </style>
 
 <script>
@@ -164,7 +177,14 @@
         function addMessage(text, type) {
             const msg = document.createElement("div");
             msg.classList.add("msg", type);
-            msg.innerText = text;
+
+            if (type === "bot") {
+                // Use marked to parse the markdown coming from the AI
+                msg.innerHTML = marked.parse(text);
+            } else {
+                msg.innerText = text;
+            }
+
             chatContent.appendChild(msg);
             chatContent.scrollTop = chatContent.scrollHeight;
             return msg;
@@ -186,23 +206,20 @@
                 const payload = { question };
                 if (session_id) payload.session_id = session_id;
 
-                // IMPORTANT: Replace 'your-app-name.onrender.com' with your real Render URL
                 const response = await fetch("http://127.0.0.1:8000/ask", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) throw new Error("Server error");
-
                 const data = await response.json();
                 if (data.session_id) session_id = data.session_id;
 
-                typingMsg.innerText = data.answer;
+                // Use marked here as well to replace the "Thinking..." text
+                typingMsg.innerHTML = marked.parse(data.answer);
 
             } catch (err) {
                 typingMsg.innerText = "Error: Unable to connect to the assistant.";
-                console.error("Connection Error:", err);
             } finally {
                 sendBtn.disabled = false;
                 userInput.disabled = false;

@@ -338,9 +338,10 @@ class RAGAgent:
         prompt = ChatPromptTemplate.from_messages([
             ("system",
              self.system_prompt + "\n\n"
-             "Today's date: {today_date}\n\n"
-             "Use the context below to answer:\n\n"
-             "{context}"),
+                                  "Today's date: {today_date}\n\n"
+                                  "CRITICAL: Answer without using citations like [Source 1] or 'According to Email 2'.\n\n"  # Added reminder
+                                  "Use the context below to answer:\n\n"
+                                  "{context}"),
             MessagesPlaceholder(variable_name="messages"),
             ("human", "{input}"),
         ])
