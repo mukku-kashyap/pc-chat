@@ -147,10 +147,12 @@ class RAGAgent:
         if not docs:
             return {"context": []}
 
-        reranked = self.reranker.compress_documents(
-            documents=docs,
-            query=state["input"]
-        )
+        try:
+            reranked = self.reranker.compress_documents(documents=docs, query=state["input"])
+        except Exception as e:
+            print(f"Cohere Rerank failed: {e}")
+            # Fallback: just return the original documents without reranking
+            reranked = docs[:10]
         return {"context": reranked}
 
     def _get_email_documents(self, query: str) -> List[Document]:
